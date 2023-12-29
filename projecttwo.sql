@@ -23,7 +23,9 @@ FROM (
 GROUP BY SEASON;
 
 -- Optimize SQL：
-SELECT
+ CREATE INDEX idx_date_category ON COFFEETWO (TRANSACTION_DATE, PRODUCT_CATEGORY);
+ 
+ SELECT
   SEASON,
   SUM(TRANSACTION_QTY) AS TOTAL_QTY
 FROM (
@@ -40,7 +42,7 @@ FROM (
 ) sub
 GROUP BY SEASON
 ORDER BY SEASON;
-
+ 
 
 
 -- 2.不同店面(store_location)排行前三名產品大類別(Product_category)的銷售量(transaction_qty)
