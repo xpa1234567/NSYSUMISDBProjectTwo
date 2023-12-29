@@ -1,34 +1,45 @@
--- 1.不同營業時間點(transaction_time，以時間點區分早上6-11點/中午11-16點/晚上16-21點)，咖啡(product_category=Coffee)的銷售量(transaction_qty)
+-- 1.不同季節(transaction_date，以月份區分春天3-5月/夏天6-8月/秋天9-11月/冬天12-2月)，咖啡(product_category=Coffee)的銷售量(transaction_qty)
 -- Original SQL：
-SELECT CASE
-         WHEN transaction_time BETWEEN 6 AND 10 THEN '早上 6-11'
-         WHEN transaction_time BETWEEN 11 AND 15 THEN '中午 11-16'
-         WHEN transaction_time BETWEEN 16 AND 20 THEN '晚上 16-21'
-       END                  AS TIME_PERIOD,
-       SUM(transaction_qty) AS TOTAL_QTY
-FROM   coffeetwo
-WHERE  product_category = 'Coffee'
-GROUP  BY CASE
-            WHEN transaction_time BETWEEN 6 AND 10 THEN '早上 6-11'
-            WHEN transaction_time BETWEEN 11 AND 15 THEN '中午 11-16'
-            WHEN transaction_time BETWEEN 16 AND 20 THEN '晚上 16-21'
-          END;
--- Optimize SQL：
-SELECT
-  TIME_PERIOD,
-  SUM(TOTAL_QTY) AS TOTAL_QTY
+ SELECT
+  SEASON,
+  SUM(TOTAL_QTY)
 FROM (
   SELECT
+    (
+      SELECT 
+        CASE 
+          WHEN TO_NUMBER(TO_CHAR(sd_inner.TRANSACTION_DATE, 'MM')) BETWEEN 3 AND 5 THEN '春季'
+          WHEN TO_NUMBER(TO_CHAR(sd_inner.TRANSACTION_DATE, 'MM')) BETWEEN 6 AND 8 THEN '夏季'
+          WHEN TO_NUMBER(TO_CHAR(sd_inner.TRANSACTION_DATE, 'MM')) BETWEEN 9 AND 11 THEN '秋季'
+          WHEN TO_NUMBER(TO_CHAR(sd_inner.TRANSACTION_DATE, 'MM')) = 12 OR TO_NUMBER(TO_CHAR(sd_inner.TRANSACTION_DATE, 'MM')) BETWEEN 1 AND 2 THEN '冬季'
+        END
+      FROM COFFEETWO sd_inner
+      WHERE sd_inner.TRANSACTION_ID = sd_outer.TRANSACTION_ID
+    ) AS SEASON,
+    sd_outer.TRANSACTION_QTY AS TOTAL_QTY
+  FROM COFFEETWO sd_outer
+  WHERE sd_outer.PRODUCT_CATEGORY = 'Coffee'
+) sub
+GROUP BY SEASON;
+
+-- Optimize SQL：
+SELECT
+  SEASON,
+  SUM(TRANSACTION_QTY) AS TOTAL_QTY
+FROM (
+  SELECT
+    TRANSACTION_QTY,
     CASE
-      WHEN transaction_time BETWEEN 6 AND 10 THEN '早上 6-11'
-      WHEN transaction_time BETWEEN 11 AND 15 THEN '中午 11-16'
-      WHEN transaction_time BETWEEN 16 AND 20 THEN '晚上 16-21'
-    END AS TIME_PERIOD,
-    transaction_qty AS TOTAL_QTY
-  FROM coffeetwo
-  WHERE product_category = 'Coffee'
-)
-GROUP BY TIME_PERIOD
+      WHEN EXTRACT(MONTH FROM TRANSACTION_DATE) IN (3, 4, 5) THEN '春季'
+      WHEN EXTRACT(MONTH FROM TRANSACTION_DATE) IN (6, 7, 8) THEN '夏季'
+      WHEN EXTRACT(MONTH FROM TRANSACTION_DATE) IN (9, 10, 11) THEN '秋季'
+      WHEN EXTRACT(MONTH FROM TRANSACTION_DATE) IN (12, 1, 2) THEN '冬季'
+    END AS SEASON
+  FROM COFFEETWO
+  WHERE PRODUCT_CATEGORY = 'Coffee'
+) sub
+GROUP BY SEASON
+ORDER BY SEASON;
 
 
 
